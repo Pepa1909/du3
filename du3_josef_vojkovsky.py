@@ -1,24 +1,29 @@
 from pyproj import Transformer
 import json
 import math
+import statistics
 with open("adresy.geojson", encoding="utf-8") as adresy, open("kontejnery.geojson",encoding="utf-8") as kontejnery:
     data_adresy = json.load(adresy)
-    souradnice = data_adresy["features"][0]["geometry"]["coordinates"]
     ulice = data_adresy["features"][0]["properties"]["addr:street"]
     cislo_domu = data_adresy["features"][0]["properties"]["addr:housenumber"]
     wgs2jtsk = Transformer.from_crs(4326,5514, always_xy=True)
-    out = wgs2jtsk.transform(*souradnice)
     data_kontejnery = json.load(kontejnery) 
-    list_kont=[]
-    for kontejner in data_kontejnery["features"]:
-        list_kont.append(kontejner["geometry"]["coordinates"])
-    list_adres=[]
+    vzdalenosti = []
+    minima = []
     for adresa in data_adresy["features"]:
         jtsk_adresa = wgs2jtsk.transform(*adresa["geometry"]["coordinates"])
-        list_adres.append(jtsk_adresa)
-    print(list_adres[0][0],list_adres[0][-1])
-    print(list_kont[0][0],list_kont[0][-1])
-        # vzdalenost_x = list_adres[0][0]-(list_kont[0][0])
-        # vzdalenost_y = list_adres[0][-1]-( list_kont[0][-1])
-        # print(math.sqrt(vzdalenost_x**2+vzdalenost_y**2))
-        # list_adres = []
+        for kontejner in data_kontejnery["features"]:
+            vzdalenost_x = jtsk_adresa[0]-(kontejner["geometry"]["coordinates"][0])
+            vzdalenost_y = jtsk_adresa[-1]-(kontejner["geometry"]["coordinates"][-1])
+            vzdalenost = math.sqrt(vzdalenost_x**2+vzdalenost_y**2)
+            vzdalenosti.append(vzdalenost)
+            if vzdalenosti[-1] < vzdalenosti[0]:
+                vzdalenosti.remove(vzdalenosti[0])
+            elif len(vzdalenosti) > 1:
+                vzdalenosti.remove(vzdalenosti[-1])
+        minima.append(vzdalenosti[0])
+        vzdalenosti=[]
+    print(f'''načteno {len(data_kontejnery["features"])} kontejnerů a {len(data_adresy["features"])} adres.
+    
+    průměrná vzdálenost je {statistics.mean(minima)} a nejmenší vzdálenost je {min(minima)} na adrese {ulice} {cislo_domu}''')
+            
