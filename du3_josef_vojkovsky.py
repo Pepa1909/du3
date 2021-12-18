@@ -47,13 +47,14 @@ except PermissionError as permission:
     print(f"Program nemá oprávnění ke čtení souboru {permission.filename}.")
     quit()
 except json.decoder.JSONDecodeError:
-    print(f"Minimálně jeden ze souborů je prazdný.")
+    print(f"Minimálně jeden ze souborů není platný .json soubor.")
     quit()
 
 # Vytvoření převodníku, seznamu na nejbližší koše a konstanty na nejvzdálenější koš
 wgs2jtsk_prevodnik = Transformer.from_crs(4326,5514, always_xy = True)
 minima = []
-MAX_VZDALENOST_KE_KOSI = None
+adresa_a_kos_nejdal = None
+MAX_DISTANCE = 10000
 
 # Projede celý seznam adres, každou přetransformuje do JTSK
 for adresa in data_adresy["features"]:
@@ -70,13 +71,13 @@ for adresa in data_adresy["features"]:
             
     minima.append(nejmensi_vzdalenost) # Seznam minima obsahuje vzdálenosti nejbližších košů
 
-    # Když je nové nejmenší číslo větší než 10 km, program se ukončí
-    if minima[-1] > 10000:
-        print("Nejbližší kontejner k jedné z adres se nachází dále než 10 km, v datech bude chyba.")
+    # Když je nové nejmenší číslo větší než MAX_DISTANCE (10 km), program se ukončí
+    if minima[-1] > MAX_DISTANCE:
+        print(f"Nejbližší kontejner k jedné z adres se nachází dále než {MAX_DISTANCE/1000:.2f} km, v datech bude chyba.")
         quit()
 
     # Určení adresy, ze které je to ke koši nejdál
-    MAX_VZDALENOST_KE_KOSI = kos_nejdal(MAX_VZDALENOST_KE_KOSI, nejmensi_vzdalenost, adresa, minima) 
+    adresa_a_kos_nejdal = kos_nejdal(adresa_a_kos_nejdal, nejmensi_vzdalenost, adresa, minima) 
 
 # Vytištění výstupu   
 print(f'''
@@ -84,6 +85,6 @@ Načteno {len(data_adresy["features"])} adresních bodů.
 Načteno {len(data_kontejnery["features"])} kontejnerů na tříděný odpad.
 
 Průměrná vzdálenost ke kontejneru je {statistics.mean(minima):.0f} m.
-Nejdále je to z adresy {MAX_VZDALENOST_KE_KOSI[-2]} {MAX_VZDALENOST_KE_KOSI[-1]}, vzdálenost je {max(minima):.0f} m. 
+Nejdále je to z adresy {adresa_a_kos_nejdal[-2]} {adresa_a_kos_nejdal[-1]}, vzdálenost je {max(minima):.0f} m. 
 Medián vzdáleností je {statistics.median(minima):.0f} m.
 ''')
